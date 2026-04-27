@@ -127,6 +127,19 @@ export const LOCAL_MODEL_CATALOG = [
         tags: ['video', 'wan', 'text-to-video'],
     },
     {
+        id: 'wan2gp:wan22-i2v',
+        name: 'Wan 2.2 (Image-to-Video)',
+        description: 'Video — Wan 2.2 image-to-video. Provide a start frame.',
+        type: 'video',
+        family: 'wan',
+        provider: 'wan2gp',
+        needsImage: true,
+        aspectRatios: ['16:9', '1:1', '9:16'],
+        defaultSteps: 25,
+        defaultGuidance: 5.0,
+        tags: ['video', 'wan', 'image-to-video'],
+    },
+    {
         id: 'wan2gp:hunyuan-video',
         name: 'Hunyuan Video (Wan2GP)',
         description: 'Video — Hunyuan text-to-video via Wan2GP.',
@@ -155,3 +168,9 @@ export const LOCAL_MODEL_CATALOG = [
 export function getLocalModelById(id) {
     return LOCAL_MODEL_CATALOG.find(m => m.id === id) || null;
 }
+
+export const isWan2gpModelId = (id) => getLocalModelById(id)?.provider === 'wan2gp';
+export const isLocalModelId  = (id) => !!getLocalModelById(id);
+
+export const localT2VModels = LOCAL_MODEL_CATALOG.filter(m => m.provider === 'wan2gp' && m.type === 'video' && !m.needsImage);
+export const localI2VModels = LOCAL_MODEL_CATALOG.filter(m => m.provider === 'wan2gp' && m.type === 'video' &&  m.needsImage);

@@ -44,6 +44,19 @@ class LocalInferenceClient {
         if (!isLocalAIAvailable()) return { ok: false, error: 'Not in desktop app' };
         return window.localAI.wan2gp.probe(url);
     }
+    // Pushes a File/Blob to the configured Wan2GP server's /upload endpoint
+    // and returns { url, path }. URL is a previewable HTTP link; the provider
+    // also remembers the path so a subsequent generate(params.image=url) call
+    // can rehydrate it as a Gradio file descriptor.
+    async uploadFileToWan2gp(file) {
+        if (!isLocalAIAvailable()) throw new Error('Local AI only available in the desktop app.');
+        const buf = await file.arrayBuffer();
+        return window.localAI.wan2gp.uploadFile({
+            name: file.name,
+            type: file.type,
+            bytes: new Uint8Array(buf),
+        });
+    }
 
     // ── Unified model list (both providers merged) ────────────────────────
     async listModels() {

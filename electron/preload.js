@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('localAI', {
         listModels: () => ipcRenderer.invoke('wan2gp:list-models'),
         generate:   (params) => ipcRenderer.invoke('wan2gp:generate', params),
         cancelGeneration: () => ipcRenderer.invoke('wan2gp:cancel-generation'),
+        uploadFile: (payload) => ipcRenderer.invoke('wan2gp:upload-file', payload),
     },
 
     // Progress events — both engines emit on local-ai:progress

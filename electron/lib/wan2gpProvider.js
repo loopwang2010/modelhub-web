@@ -59,6 +59,20 @@ const WAN2GP_CATALOG = [
         tags: ['video', 'wan', 'text-to-video'],
     },
     {
+        id: 'wan2gp:wan22-i2v',
+        name: 'Wan 2.2 (Image-to-Video)',
+        description: 'Video — Wan 2.2 image-to-video. Provide a start frame.',
+        type: 'video',
+        family: 'wan',
+        provider: 'wan2gp',
+        fn: 'wan22_i2v',
+        needsImage: true,
+        aspectRatios: ['16:9', '1:1', '9:16'],
+        defaultSteps: 25,
+        defaultGuidance: 5.0,
+        tags: ['video', 'wan', 'image-to-video'],
+    },
+    {
         id: 'wan2gp:hunyuan-video',
         name: 'Hunyuan Video (Wan2GP)',
         description: 'Video — Hunyuan text-to-video via Wan2GP.',
@@ -100,6 +114,10 @@ function normalizeUrl(url) { return (url || '').trim().replace(/\/+$/, ''); }
 // ─── State ────────────────────────────────────────────────────────────────────
 let activeAbort = null;
 
+// Map of uploaded source URL → { path, url, orig_name } so generate() can
+// rehydrate the Gradio file descriptor when the renderer passes the URL back.
+const uploadedFiles = new Map();
+
 // ─── HTTP helpers ─────────────────────────────────────────────────────────────
 function httpJson(urlStr, { method = 'GET', body = null, timeoutMs = 5000 } = {}) {
     return new Promise((resolve, reject) => {
@@ -133,6 +151,37 @@ async function probe(url) {
     } catch (e) {
         return { ok: false, error: e.message };
     }
+}
+
+// ─── Upload (Gradio v4 /upload) ───────────────────────────────────────────────
+// Renderer hands us { name, type, bytes:Uint8Array }. We POST as multipart to
+// <base>/upload?upload_id=<id>; Gradio replies with an array of server paths.
+// We expose those as a stable HTTP URL the renderer can preview AND stash the
+// raw path for generate() to feed back into Gradio's file descriptor.
+async function uploadFile({ name, type, bytes }) {
+    const { url } = readConfig();
+    if (!url) throw new Error('Wan2GP server URL not set. Open Settings → Local Models to configure.');
+    const base = normalizeUrl(url);
+
+    if (!bytes || !bytes.length) throw new Error('Empty file payload');
+    const safeName = name || 'upload.bin';
+    const mime = type || 'application/octet-stream';
+
+    const blob = new Blob([new Uint8Array(bytes)], { type: mime });
+    const form = new FormData();
+    form.append('files', blob, safeName);
+
+    const uploadId = Math.random().toString(36).slice(2, 12);
+    const res = await fetch(`${base}/upload?upload_id=${uploadId}`, { method: 'POST', body: form });
+    if (!res.ok) throw new Error(`Wan2GP upload failed: HTTP ${res.status}`);
+
+    const paths = await res.json();
+    const path = Array.isArray(paths) ? paths[0] : paths;
+    if (!path || typeof path !== 'string') throw new Error('Wan2GP upload returned no path');
+
+    const fileUrl = `${base}/file=${path.replace(/^\/+/, '')}`;
+    uploadedFiles.set(fileUrl, { path, url: fileUrl, orig_name: safeName, mime_type: mime });
+    return { url: fileUrl, path };
 }
 
 async function listModels() {
@@ -233,13 +282,29 @@ async function generate(params, mainWindow) {
     const steps = params.steps ?? model.defaultSteps;
     const guidance = params.guidance_scale ?? model.defaultGuidance;
 
+    // Image input → resolve to a Gradio file descriptor if we uploaded it.
+    let imageDescriptor = null;
+    if (params.image) {
+        const cached = uploadedFiles.get(params.image);
+        if (cached) {
+            imageDescriptor = { path: cached.path, url: cached.url, orig_name: cached.orig_name, mime_type: cached.mime_type, meta: { _type: 'gradio.FileData' } };
+        } else if (typeof params.image === 'string') {
+            imageDescriptor = params.image; // raw URL — Gradio fetches it
+        } else {
+            imageDescriptor = params.image;
+        }
+    }
+    if (model.needsImage && !imageDescriptor) {
+        throw new Error(`${model.name} requires a start-frame image — upload one first.`);
+    }
+
     // Generic positional input — adjust upstream `fn` if signature differs.
     const payload = {
         data: [
             params.prompt || '',
             params.negative_prompt || '',
             width, height, steps, guidance, seed,
-            params.image || null,
+            imageDescriptor,
         ],
     };
 
@@ -282,6 +347,7 @@ function register() {
     ipcMain.handle('wan2gp:list-models', () => listModels());
     ipcMain.handle('wan2gp:generate',    (_, params) => generate(params, getMainWindow()));
     ipcMain.handle('wan2gp:cancel-generation', () => cancelGeneration());
+    ipcMain.handle('wan2gp:upload-file', (_, payload) => uploadFile(payload));
 }
 
 module.exports = { register, WAN2GP_CATALOG };
