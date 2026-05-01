@@ -471,7 +471,7 @@ export class MuapiClient {
         if (params.audio_url) finalPayload.audio_url = params.audio_url;
         if (params.image_url) finalPayload.image_url = params.image_url;
         if (params.video_url) finalPayload.video_url = params.video_url;
-        if (params.prompt) finalPayload.prompt = params.prompt;
+        if (modelInfo?.hasPrompt) finalPayload.prompt = params.prompt || '';
         if (params.resolution) finalPayload.resolution = params.resolution;
         if (params.seed !== undefined && params.seed !== -1) finalPayload.seed = params.seed;
 
