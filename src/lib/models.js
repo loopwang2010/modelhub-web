@@ -5583,6 +5583,7 @@ export const i2vModels = [
     "endpoint": "kling-v2.1-master-i2v",
     "family": "kling-v2.1",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -5624,6 +5625,7 @@ export const i2vModels = [
     "endpoint": "kling-v2.1-standard-i2v",
     "family": "kling-v2.1",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -5665,6 +5667,7 @@ export const i2vModels = [
     "endpoint": "kling-v2.1-pro-i2v",
     "family": "kling-v2.1",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -5706,6 +5709,7 @@ export const i2vModels = [
     "endpoint": "wan2.2-image-to-video",
     "family": "wan2.2",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -5932,6 +5936,7 @@ export const i2vModels = [
     "endpoint": "minimax-hailuo-02-standard-i2v",
     "family": "minimax-2",
     "imageField": "image_url",
+    "lastImageField": "end_image_url",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -5973,6 +5978,7 @@ export const i2vModels = [
     "endpoint": "minimax-hailuo-02-pro-i2v",
     "family": "minimax-2",
     "imageField": "image_url",
+    "lastImageField": "end_image_url",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -6072,6 +6078,7 @@ export const i2vModels = [
     "endpoint": "seedance-lite-i2v",
     "family": "bytedance",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -6753,6 +6760,7 @@ export const i2vModels = [
     "endpoint": "veo3.1-image-to-video",
     "family": "veo3.1",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -6803,6 +6811,7 @@ export const i2vModels = [
     "endpoint": "veo3.1-fast-image-to-video",
     "family": "veo3.1",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -6853,6 +6862,7 @@ export const i2vModels = [
     "endpoint": "veo3.1-lite-image-to-video",
     "family": "veo3.1",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -7433,6 +7443,7 @@ export const i2vModels = [
     "endpoint": "kling-o1-image-to-video",
     "family": "kling-o1",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -7753,6 +7764,7 @@ export const i2vModels = [
     "endpoint": "kling-o1-standard-image-to-video",
     "family": "kling-o1",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -7825,6 +7837,7 @@ export const i2vModels = [
     "endpoint": "seedance-v1.5-pro-i2v",
     "family": "seedance-v1.5-pro",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -7895,6 +7908,7 @@ export const i2vModels = [
     "endpoint": "seedance-v1.5-pro-i2v-fast",
     "family": "seedance-v1.5-pro",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -8005,6 +8019,7 @@ export const i2vModels = [
     "endpoint": "kling-v3.0-pro-image-to-video",
     "family": "kling-v3.0",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {
@@ -8041,6 +8056,7 @@ export const i2vModels = [
     "endpoint": "kling-v3.0-standard-image-to-video",
     "family": "kling-v3.0",
     "imageField": "image_url",
+    "lastImageField": "last_image",
     "hasPrompt": true,
     "inputs": {
       "prompt": {

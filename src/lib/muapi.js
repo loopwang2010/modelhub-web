@@ -326,6 +326,13 @@ export class MuapiClient {
             }
         }
 
+        // Optional end-frame image — only for models declaring lastImageField.
+        // Server-side param name varies (last_image vs end_image_url).
+        const lastImageField = modelInfo?.lastImageField;
+        if (lastImageField && params.last_image) {
+            finalPayload[lastImageField] = params.last_image;
+        }
+
         if (params.aspect_ratio) finalPayload.aspect_ratio = params.aspect_ratio;
         if (params.duration) finalPayload.duration = params.duration;
         if (params.resolution) finalPayload.resolution = params.resolution;

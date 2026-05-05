@@ -45,6 +45,7 @@ export function VideoStudio() {
     let lastGenerationModel = null;
     let dropdownOpen = null;
     let uploadedImageUrl = null;
+    let uploadedEndImageUrl = null; // optional end-frame for FLF i2v models
     let imageMode = false; // false = t2v models, true = i2v models
     let v2vMode = false;   // true = video-to-video tools mode
     let uploadedVideoUrl = null;
@@ -140,6 +141,9 @@ export function VideoStudio() {
         onClear: () => {
             uploadedImageUrl = null;
             imageMode = false;
+            // Clearing the start frame invalidates any selected end frame.
+            uploadedEndImageUrl = null;
+            endPicker?.reset();
             selectedModel = allT2V[0].id;
             selectedModelName = allT2V[0].name;
             document.getElementById('v-model-btn-label').textContent = selectedModelName;
@@ -154,6 +158,46 @@ export function VideoStudio() {
     });
     topRow.appendChild(picker.trigger);
     container.appendChild(picker.panel);
+
+    // --- End-Frame Upload Picker (FLF i2v models — kling/veo/seedance/etc.) ---
+    // Shown only when imageMode is on AND the selected i2v model declares a
+    // `lastImageField` in its catalog entry. Reuses the same UploadPicker UI;
+    // a corner badge differentiates it from the start-frame picker.
+    const endPicker = createUploadPicker({
+        anchorContainer: container,
+        onSelect: ({ url }) => { uploadedEndImageUrl = url; },
+        onClear: () => { uploadedEndImageUrl = null; },
+        uploadFn: (file) => muapi.uploadFile(file),
+        requireApiKey: () => true,
+    });
+    endPicker.trigger.title = 'End frame (optional)';
+    // Visual marker: small "L" badge in the corner so users can tell the two
+    // pickers apart at a glance. The wrapper keeps it from interfering with
+    // UploadPicker's own thumbnail/spinner state swapping.
+    const endBadge = document.createElement('div');
+    endBadge.className = 'absolute top-0.5 left-0.5 px-1 h-4 bg-white/20 rounded-md flex items-center justify-center pointer-events-none';
+    endBadge.innerHTML = '<span class="text-[8px] font-black text-white leading-none">END</span>';
+    endPicker.trigger.appendChild(endBadge);
+    endPicker.trigger.classList.add('hidden'); // start hidden until updateEndFrameVisibility flips it on
+    topRow.appendChild(endPicker.trigger);
+    container.appendChild(endPicker.panel);
+
+    const updateEndFrameVisibility = () => {
+        const model = getCurrentModel();
+        const supports = imageMode && !!model?.lastImageField;
+        if (supports) {
+            endPicker.trigger.classList.remove('hidden');
+            endPicker.trigger.classList.add('flex');
+        } else {
+            endPicker.trigger.classList.add('hidden');
+            endPicker.trigger.classList.remove('flex');
+            // Drop any stale end-frame selection when leaving FLF-capable state
+            if (uploadedEndImageUrl) {
+                uploadedEndImageUrl = null;
+                endPicker.reset();
+            }
+        }
+    };
 
     // --- Video Upload Picker (Video-to-Video) ---
     const videoFileInput = document.createElement('input');
@@ -380,6 +424,9 @@ export function VideoStudio() {
 
     const updateControlsForModel = (modelId) => {
         const model = getCurrentModels().find(m => m.id === modelId);
+
+        // End-frame picker visibility depends on imageMode + model.lastImageField.
+        updateEndFrameVisibility();
 
         // In v2v mode, hide all parameter controls — no prompt/AR/duration/etc needed
         if (v2vMode) {
@@ -1105,6 +1152,9 @@ export function VideoStudio() {
                 };
                 i2vParams.prompt = prompt || '';
                 i2vParams.aspect_ratio = selectedAr;
+                if (uploadedEndImageUrl && getCurrentModel()?.lastImageField) {
+                    i2vParams.last_image = uploadedEndImageUrl;
+                }
                 const durations = getCurrentDurations(selectedModel);
                 if (durations.length > 0) i2vParams.duration = selectedDuration;
                 const resolutions = getCurrentResolutions(selectedModel);
