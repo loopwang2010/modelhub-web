@@ -107,6 +107,10 @@ export async function generateI2V(apiKey, params) {
         if (imageField === 'images_list') payload.images_list = [params.image_url];
         else payload[imageField] = params.image_url;
     }
+    const lastImageField = modelInfo?.lastImageField;
+    if (lastImageField && params.last_image) {
+        payload[lastImageField] = params.last_image;
+    }
     if (params.aspect_ratio) payload.aspect_ratio = params.aspect_ratio;
     if (params.duration) payload.duration = params.duration;
     if (params.resolution) payload.resolution = params.resolution;

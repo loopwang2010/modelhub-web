@@ -276,6 +276,9 @@ export default function VideoStudio({
   // ── uploads ──
   const [uploadedImageUrl, setUploadedImageUrl] = useState(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [uploadedEndImageUrl, setUploadedEndImageUrl] = useState(null);
+  const [endImageUploading, setEndImageUploading] = useState(false);
+  const [endImageProgress, setEndImageProgress] = useState(0);
   const [uploadedVideoUrl, setUploadedVideoUrl] = useState(null);
   const [videoUploading, setVideoUploading] = useState(false);
   const [uploadedVideoName, setUploadedVideoName] = useState(null);
@@ -306,6 +309,7 @@ export default function VideoStudio({
   const textareaRef = useRef(null);
   const dropdownRef = useRef(null);
   const imageFileInputRef = useRef(null);
+  const endImageFileInputRef = useRef(null);
   const videoFileInputRef = useRef(null);
   const resultVideoRef = useRef(null);
   const hasRestored = useRef(false);
@@ -520,11 +524,15 @@ export default function VideoStudio({
       setUploadedVideoName(null);
       setV2vMode(false);
       if (!imageMode) {
-        const firstI2V = i2vModels[0];
+        const currentT2V = t2vModels.find((m) => m.id === selectedModel);
+        const sibling = currentT2V?.family
+          ? i2vModels.find((m) => m.family === currentT2V.family)
+          : null;
+        const target = sibling || i2vModels[0];
         setImageMode(true);
-        setSelectedModel(firstI2V.id);
-        setSelectedModelName(firstI2V.name);
-        applyControlsForModel(firstI2V.id, true, false);
+        setSelectedModel(target.id);
+        setSelectedModelName(target.name);
+        applyControlsForModel(target.id, true, false);
       }
       setPromptDisabled(false);
     } catch (err) {
@@ -633,11 +641,15 @@ export default function VideoStudio({
       setV2vMode(false);
 
       if (!imageMode) {
-        const firstI2V = i2vModels[0];
+        const currentT2V = t2vModels.find((m) => m.id === selectedModel);
+        const sibling = currentT2V?.family
+          ? i2vModels.find((m) => m.family === currentT2V.family)
+          : null;
+        const target = sibling || i2vModels[0];
         setImageMode(true);
-        setSelectedModel(firstI2V.id);
-        setSelectedModelName(firstI2V.name);
-        applyControlsForModel(firstI2V.id, true, false);
+        setSelectedModel(target.id);
+        setSelectedModelName(target.name);
+        applyControlsForModel(target.id, true, false);
       }
       setPromptDisabled(false);
     } catch (err) {
@@ -652,6 +664,7 @@ export default function VideoStudio({
 
   const clearImageUpload = () => {
     setUploadedImageUrl(null);
+    setUploadedEndImageUrl(null);
     setImageMode(false);
     const first = t2vModels[0];
     setSelectedModel(first.id);
@@ -659,6 +672,32 @@ export default function VideoStudio({
     applyControlsForModel(first.id, false, false);
     setPromptDisabled(false);
   };
+
+  // ── end-frame upload (FLF i2v models) ──────────────────────────────────────
+  const handleEndImageFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image exceeds 10MB limit.");
+      return;
+    }
+    setEndImageUploading(true);
+    setEndImageProgress(0);
+    try {
+      const url = await uploadFile(apiKey, file, (pct) => {
+        setEndImageProgress(pct);
+      });
+      setUploadedEndImageUrl(url);
+    } catch (err) {
+      alert(`End frame upload failed: ${err.message}`);
+    } finally {
+      setEndImageUploading(false);
+      setEndImageProgress(0);
+      if (endImageFileInputRef.current) endImageFileInputRef.current.value = "";
+    }
+  };
+
+  const clearEndImage = () => setUploadedEndImageUrl(null);
 
   // ── video upload ─────────────────────────────────────────────────────────
   const handleVideoFileChange = async (e) => {
@@ -820,6 +859,10 @@ export default function VideoStudio({
         const i2vParams = { model: selectedModel, image_url: uploadedImageUrl };
         if (trimmedPrompt) i2vParams.prompt = trimmedPrompt;
         i2vParams.aspect_ratio = selectedAr;
+        const i2vModel = i2vModels.find((m) => m.id === selectedModel);
+        if (uploadedEndImageUrl && i2vModel?.lastImageField) {
+          i2vParams.last_image = uploadedEndImageUrl;
+        }
         const durations = getDurationsForI2VModel(selectedModel);
         if (durations.length > 0) i2vParams.duration = selectedDuration;
         const resolutions = getResolutionsForI2VModel(selectedModel);
@@ -1208,6 +1251,70 @@ export default function VideoStudio({
                 )}
               </button>
             </div>
+
+            {/* End-frame upload button (FLF i2v models only) */}
+            {imageMode && i2vModels.find((m) => m.id === selectedModel)?.lastImageField && (
+              <div className="relative">
+                <input
+                  ref={endImageFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleEndImageFileChange}
+                />
+                <button
+                  type="button"
+                  title={uploadedEndImageUrl ? "Clear end frame" : "Upload end frame (optional)"}
+                  onClick={() =>
+                    uploadedEndImageUrl
+                      ? clearEndImage()
+                      : endImageFileInputRef.current?.click()
+                  }
+                  className={`w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden ${uploadedEndImageUrl ? "border-primary/60 bg-primary/5" : "bg-white/5 border-white/[0.03] hover:bg-white/10 hover:border-primary/40"} group`}
+                >
+                  {endImageUploading ? (
+                    <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]">
+                      <svg className="w-8 h-8 -rotate-90">
+                        <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/10" />
+                        <circle
+                          cx="16"
+                          cy="16"
+                          r="14"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          fill="transparent"
+                          strokeDasharray={88}
+                          strokeDashoffset={88 - (88 * endImageProgress) / 100}
+                          className="text-primary transition-all duration-300"
+                        />
+                      </svg>
+                      <span className="absolute text-[9px] font-black text-primary leading-none">
+                        {endImageProgress}%
+                      </span>
+                    </div>
+                  ) : null}
+
+                  {uploadedEndImageUrl ? (
+                    <img
+                      src={uploadedEndImageUrl}
+                      alt=""
+                      className={`w-full h-full object-cover rounded-full ${endImageUploading ? "opacity-40 blur-[2px]" : "opacity-100"}`}
+                    />
+                  ) : (
+                    !endImageUploading && (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/40 group-hover:text-primary transition-colors">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <polyline points="21 15 16 10 5 21" />
+                      </svg>
+                    )
+                  )}
+                  <span className="absolute top-0.5 left-0.5 px-1 h-3.5 bg-black/60 rounded-md text-[7px] font-black text-primary leading-none flex items-center justify-center pointer-events-none">
+                    END
+                  </span>
+                </button>
+              </div>
+            )}
 
             {/* Video upload button */}
             <div className="relative">
