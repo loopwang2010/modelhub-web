@@ -1,12 +1,15 @@
 'use client';
 
-// Pruned in S10: removed WorkflowStudio + AgentStudio (depended on
-// Vibe-Workflow + Open-Poe-AI submodules which are gone). Removed all
-// workflow/agent routing logic and the fromWorkflowBuilder reload kludge.
+// S10b: replaced ApiKeyModal (muapi key paste) with LoginModal (email +
+// password against /v1/auth/login). Auth lives in a HttpOnly
+// modelhub_session cookie set by the backend; we never read it from
+// JavaScript and never store credentials in localStorage (AP-4).
 //
-// This file will be replaced in the main S10 task when we swap muapi.js
-// for modelhub-client.js. For now it's the minimum surface that compiles
-// and lets the existing tests + dev server boot.
+// Balance is fetched from /v1/wallet/balance via getBalance() once the
+// user is authenticated. Studio components no longer need an apiKey prop
+// — they ride the same cookie via modelhub-client. The prop is kept on
+// the wire (passed empty) until each studio drops its `apiKey` argument
+// in a follow-up.
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -17,9 +20,11 @@ import {
   CinemaStudio,
   MarketingStudio,
   AppsStudio,
-  getUserBalance,
+  getBalance,
+  getMe,
+  logout as apiLogout,
 } from 'studio';
-import ApiKeyModal from './ApiKeyModal';
+import LoginModal from './LoginModal';
 
 const TABS = [
   { id: 'image',     label: 'Image Studio' },
@@ -30,7 +35,8 @@ const TABS = [
   { id: 'apps',      label: 'Explore Apps' },
 ];
 
-const STORAGE_KEY = 'muapi_key';
+// Balance arrives in micro-USD (per WalletBalance schema). 1_000_000 = $1.
+const MICRO_USD_PER_USD = 1_000_000;
 
 export default function StandaloneShell() {
   const params = useParams();
@@ -44,7 +50,8 @@ export default function StandaloneShell() {
     return 'image';
   };
 
-  const [apiKey, setApiKey] = useState(null);
+  const [user, setUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
   const [activeTab, setActiveTab] = useState(getInitialTab());
   const [balance, setBalance] = useState(null);
   const [hasMounted, setHasMounted] = useState(false);
@@ -61,35 +68,73 @@ export default function StandaloneShell() {
     router.push(`/studio/${tabId}`);
   };
 
-  const fetchBalance = useCallback(async (key) => {
+  const fetchBalance = useCallback(async () => {
     try {
-      const data = await getUserBalance(key);
-      setBalance(data.balance);
+      const data = await getBalance();
+      setBalance(data?.balance ?? null);
     } catch (err) {
-      console.error('Balance fetch failed:', err);
+      // 401s are silenced — the axios interceptor in modelhub-client
+      // handles the redirect. Surface other errors for visibility.
+      if (err?.response?.status !== 401) {
+        // eslint-disable-next-line no-console
+        console.error('Balance fetch failed:', err);
+      }
     }
   }, []);
 
+  // On mount, ask /v1/auth/me whether the cookie is valid. If yes, we're
+  // logged in; if 401, LoginModal renders. We deliberately do NOT keep
+  // any auth state in localStorage.
   useEffect(() => {
     setHasMounted(true);
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      setApiKey(stored);
-      fetchBalance(stored);
-    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const me = await getMe();
+        if (!cancelled) {
+          setUser(me);
+          fetchBalance();
+        }
+      } catch {
+        if (!cancelled) setUser(null);
+      } finally {
+        if (!cancelled) setAuthChecking(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [fetchBalance]);
 
-  const handleSaveKey = (key) => {
-    localStorage.setItem(STORAGE_KEY, key);
-    setApiKey(key);
-    fetchBalance(key);
+  const handleAuthenticated = async () => {
+    setAuthChecking(true);
+    try {
+      const me = await getMe();
+      setUser(me);
+      fetchBalance();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Post-auth getMe failed:', err);
+    } finally {
+      setAuthChecking(false);
+    }
   };
 
-  if (!hasMounted) return null;
+  const handleLogout = async () => {
+    try {
+      await apiLogout();
+    } catch {
+      // ignore — clear local state regardless
+    }
+    setUser(null);
+    setBalance(null);
+  };
 
-  if (!apiKey) {
-    return <ApiKeyModal onSave={handleSaveKey} />;
+  if (!hasMounted || authChecking) return null;
+
+  if (!user) {
+    return <LoginModal onAuthenticated={handleAuthenticated} />;
   }
+
+  const balanceUSD = balance != null ? balance / MICRO_USD_PER_USD : null;
 
   return (
     <div className="flex flex-col h-screen bg-app-bg text-white">
@@ -106,17 +151,27 @@ export default function StandaloneShell() {
             </button>
           ))}
         </nav>
-        <div className="text-sm text-white/60">
-          {balance != null ? `$${balance.toFixed(2)}` : '—'}
+        <div className="flex items-center gap-4 text-sm text-white/60">
+          <span title="Wallet balance">
+            {balanceUSD != null ? `$${balanceUSD.toFixed(2)}` : '—'}
+          </span>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="text-white/40 hover:text-white/80 transition-colors text-xs"
+            title={user?.email}
+          >
+            Sign out
+          </button>
         </div>
       </header>
       <main className="flex-1 overflow-hidden">
-        {activeTab === 'image' && <ImageStudio apiKey={apiKey} />}
-        {activeTab === 'video' && <VideoStudio apiKey={apiKey} />}
-        {activeTab === 'lipsync' && <LipSyncStudio apiKey={apiKey} />}
-        {activeTab === 'cinema' && <CinemaStudio apiKey={apiKey} />}
-        {activeTab === 'marketing' && <MarketingStudio apiKey={apiKey} />}
-        {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
+        {activeTab === 'image' && <ImageStudio apiKey="" />}
+        {activeTab === 'video' && <VideoStudio apiKey="" />}
+        {activeTab === 'lipsync' && <LipSyncStudio apiKey="" />}
+        {activeTab === 'cinema' && <CinemaStudio apiKey="" />}
+        {activeTab === 'marketing' && <MarketingStudio apiKey="" />}
+        {activeTab === 'apps' && <AppsStudio apiKey="" />}
       </main>
     </div>
   );
