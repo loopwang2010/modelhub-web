@@ -1,13 +1,10 @@
 {
-  "name": "open-generative-ai",
-  "description": "Open-source alternative to Higgsfield AI — AI image, video, cinema and lip sync studio",
-  "homepage": "https://github.com/Anil-matcha/Open-Generative-AI",
+  "name": "modelhub-web",
+  "description": "Modelhub Playground — UI for the modelhub multi-provider AI generation API. Forked from Open-Generative-AI; pruned of workflow-builder + Open-Poe-AI submodules per S10 of clauderoot/modelhub blueprint.",
   "private": true,
-  "version": "1.0.10",
+  "version": "0.1.0",
   "workspaces": [
-    "packages/studio",
-    "packages/Vibe-Workflow/packages/workflow-builder",
-    "packages/Open-Poe-AI/packages/agents"
+    "packages/studio"
   ],
   "scripts": {
     "dev": "next dev",
@@ -15,10 +12,8 @@
     "start": "next start",
     "lint": "next lint",
     "build:studio": "npm run build -w studio",
-    "build:workflow": "npm run build -w workflow-builder",
-    "build:agent": "npm run build -w ai-agent",
-    "build:packages": "npm run build:workflow && npm run build:agent && npm run build:studio",
-    "setup": "git submodule update --init --recursive && npm install && npm run build:packages",
+    "build:packages": "npm run build:studio",
+    "setup": "npm install && npm run build:packages",
     "vite:dev": "vite",
     "vite:build": "vite build",
     "electron:dev": "npm run vite:build && electron .",
@@ -28,9 +23,9 @@
     "electron:build:all": "vite build && electron-builder --mac --win --linux"
   },
   "build": {
-    "appId": "ai.generative.open",
-    "productName": "Open Generative AI",
-    "copyright": "Copyright © 2025",
+    "appId": "ai.modelhub.playground",
+    "productName": "Modelhub Playground",
+    "copyright": "Copyright © 2026",
     "directories": {
       "output": "release"
     },
@@ -44,24 +39,13 @@
       "icon": "public/banner.png",
       "gatekeeperAssess": false,
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
+        { "target": "dmg", "arch": ["x64", "arm64"] }
       ]
     },
     "win": {
       "icon": "public/banner.png",
       "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
+        { "target": "nsis", "arch": ["x64"] }
       ]
     },
     "nsis": {
@@ -72,7 +56,7 @@
     "linux": {
       "icon": "public/banner.png",
       "category": "Utility",
-      "maintainer": "Open Generative AI Team",
+      "maintainer": "Modelhub Team",
       "extraFiles": [
         {
           "from": "build/linux/apparmor.profile",
@@ -80,18 +64,8 @@
         }
       ],
       "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64"
-          ]
-        }
+        { "target": "AppImage", "arch": ["x64"] },
+        { "target": "deb", "arch": ["x64"] }
       ]
     }
   },
@@ -101,9 +75,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.4.1",
-    "studio": "*",
-    "workflow-builder": "file:./packages/Vibe-Workflow/packages/workflow-builder",
-    "ai-agent": "file:./packages/Open-Poe-AI/packages/agents"
+    "studio": "*"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
